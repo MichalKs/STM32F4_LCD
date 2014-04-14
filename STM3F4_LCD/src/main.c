@@ -1,6 +1,6 @@
 /**
  * @file: 	main.c
- * @brief:	Blinking LED test program with printf redirected to USART2
+ * @brief:	HD44780 LCD test project.
  * redirected to USART.
  * @date: 	9 kwi 2014
  * @author: Michal Ksiezopolski
@@ -19,6 +19,7 @@
 
 #include <stm32f4xx.h>
 #include <stdio.h>
+
 #include "timers.h"
 #include "led.h"
 #include "uart.h"
@@ -44,13 +45,22 @@ int main(void) {
 
 	LED_Add(&led); // Add an LED
 
-	LCD_Init();
+	LCD_Init(); // Initialize the LCD
 
-	printf("Starting program\r\n");
+	printf("Starting program\r\n"); // Print a string to UART2
+
+	// Test the LCD
 	LCD_Puts("Start...");
+	LCD_Position(LCD_ROW2+3);
+	LCD_Putc('1');
+	LCD_Position(LCD_ROW1+6);
+	LCD_Putc('a');
+	LCD_Clear();
+	LCD_Puts("Finished test!!!");
 
 	while (1) {
 
+		LCD_Update();
 		LED_Toggle(LED0); // Toggle LED
 
 		printf("Test string sent from STM32F4!!!\r\n"); // Print test string

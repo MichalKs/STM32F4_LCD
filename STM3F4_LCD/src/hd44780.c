@@ -18,37 +18,85 @@
 
 #include "hd44780.h"
 #include "timers.h"
+#include "fifo.h"
+#include <stdio.h>
 
 static void LCD_Write(uint8_t data);
-static uint8_t LCD_Read();
-static void LCD_DataOut();
-static void LCD_DataIn();
+static uint8_t LCD_Read(void);
+static void LCD_DataOut(void);
+static void LCD_DataIn(void);
 static void LCD_SendData(uint8_t data);
 static void LCD_SendCommand(uint8_t command);
-static uint8_t LCD_ReadFlag();
+static uint8_t LCD_ReadFlag(void);
+
+
+#define LCD_BUF_LEN 256  	///< LCD buffer length
+#define LCD_DATA	0x80	///< LCD data ID
+#define LCD_COMMAND	0x40	///< LCD command ID
+
+static uint8_t lcdBuffer[LCD_BUF_LEN]; 	///< Buffer for LCD commands and data
+static FIFO_TypeDef lcdFifo;			///< FIFO for LCD data
 
 /**
- * Current row and column for keeping track of position
- */
-static uint8_t row;
-static uint8_t column;
-/**
- * Data displayed on the LCD
- */
-//static char data[32];
-
-/**
- * Initialize the display.
+ * @brief Update the LCD.
  *
+ * @details This function should be used in the main program loop
+ * to send data and commands to the LCD. If the LCD is
+ * busy the simply function returns and tries to send
+ * the data later.
  */
-void LCD_Init() {
+void LCD_Update(void) {
+
+	// If the LCD is still busy - do nothing in current run
+	if (LCD_ReadFlag()  & LCD_BUSY_FLAG)
+		return;
+
+	// If the LCD FIFO is empty
+	if (FIFO_IsEmpty(&lcdFifo))
+		return;
+
+	// First byte identifies whether we're dealing with data
+	// or a command
+	uint8_t dataOrCommand;
+	FIFO_Pop(&lcdFifo, &dataOrCommand);
+
+	// Second byte is the thing to be sent
+	uint8_t toSend;
+	FIFO_Pop(&lcdFifo, &toSend);
+
+	switch (dataOrCommand) {
+
+	// Send data
+	case LCD_DATA:
+		LCD_SendData(toSend);
+		break;
+
+	// Send a command
+	case LCD_COMMAND:
+		LCD_SendCommand(toSend);
+		break;
+
+	default:
+		printf("LCD error: Neither data nor command!");
+	}
+}
+/**
+ * @brief Initialize the display.
+ * @warning This is a blocking function (can last about 60ms) - only called once though
+ */
+void LCD_Init(void) {
 
 	// Wait 50 ms for voltage to settle.
 	TimerDelay(50);
-	LCD_DataOut();
-	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOD,ENABLE);
-//	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOB,ENABLE);
 
+	// Enable the GPIO clocks
+	RCC_AHB1PeriphClockCmd(LCD_DATA_CLK,ENABLE);
+	RCC_AHB1PeriphClockCmd(LCD_CTRL_CLK,ENABLE);
+
+	// Set LCD data pins as output
+	LCD_DataOut();
+
+	// Set control pins as output
 	GPIO_InitTypeDef GPIO_InitStructure;
 	GPIO_InitStructure.GPIO_Pin=(LCD_RS|LCD_RW|LCD_E);
 	GPIO_InitStructure.GPIO_Mode=GPIO_Mode_OUT;
@@ -57,10 +105,10 @@ void LCD_Init() {
 	GPIO_InitStructure.GPIO_PuPd=GPIO_PuPd_NOPULL;
 	GPIO_Init(LCD_CTRL_PORT,&GPIO_InitStructure);
 
-	//clear all control signals initially
+	// Clear all control signals initially
 	GPIO_ResetBits(LCD_CTRL_PORT,LCD_RW|LCD_RS|LCD_E);
 
-	//initialization in 4-bit interface
+	//initialization in 4-bit interface (as per datasheet)
 	LCD_Write(0b0011);
 	TimerDelay(5);
 
@@ -72,51 +120,74 @@ void LCD_Init() {
 
 	LCD_Write(0b0010);
 	TimerDelay(1);
+
+	// Initialize the LCD FIFO
+	lcdFifo.buf = lcdBuffer;
+	lcdFifo.len = LCD_BUF_LEN;
+
+	FIFO_Add(&lcdFifo);
+
 	// 2 row display
 	LCD_SendCommand(LCD_FUNCTION|LCD_2_ROWS);
+	// Wait until LCD is ready
+	while (LCD_ReadFlag()  & LCD_BUSY_FLAG);
+	// Turn on display, cursor and blinking
 	LCD_SendCommand(LCD_DISPLAY_ON_OFF|LCD_DISPLAY_ON|LCD_CURSOR_ON|LCD_BLINK_ON);
-
-	LCD_Clear();
+	// Wait until LCD is ready
+	while (LCD_ReadFlag()  & LCD_BUSY_FLAG);
+	// Clear the display
+	LCD_SendCommand(LCD_CLEAR_DISPLAY);
+	// Wait until LCD is ready
+	while (LCD_ReadFlag()  & LCD_BUSY_FLAG);
 }
 /**
- * Go to the beginning of the display.
- *
+ * @brief Go to the beginning of the display.
  */
-void LCD_Home() {
-	LCD_SendCommand(LCD_HOME);
-	row=column=0;
-}
+void LCD_Home(void) {
 
+	FIFO_Push(&lcdFifo, LCD_COMMAND);
+	FIFO_Push(&lcdFifo, LCD_HOME);
+}
 /**
- * Position the LCD at a given memory location.
+ * @brief Position the LCD at a given memory location.
  * @param position
  */
 void LCD_Position(uint8_t position) {
-	LCD_SendCommand(LCD_SET_DDRAM| (position & 0x7f));
+
+	FIFO_Push(&lcdFifo, LCD_COMMAND);
+	FIFO_Push(&lcdFifo, LCD_SET_DDRAM | (position & 0x7f));
 }
 /**
- * Clear the display.
+ * @brief Clear the display.
  */
-void LCD_Clear() {
-	LCD_SendCommand(LCD_CLEAR_DISPLAY);
+void LCD_Clear(void) {
+
+	FIFO_Push(&lcdFifo, LCD_COMMAND);
+	FIFO_Push(&lcdFifo, LCD_CLEAR_DISPLAY);
 }
 /**
- * Print a character.
+ * @brief Print a character.
+ * @param c Character to print.
  */
-void LCD_Putc(char c) {
-	LCD_SendData(c);
+void LCD_Putc(uint8_t c) {
+
+	FIFO_Push(&lcdFifo, LCD_DATA);
+	FIFO_Push(&lcdFifo, c);
 }
 /**
- * Print a string ended with '\0'.
+ * @brief Print a string ended with '\0'.
+ * @param s String
  */
 void LCD_Puts(char* s) {
+
 	uint8_t i=0;
 	while (s[i]!='\0') {
-		LCD_Putc(s[i++]);
+		LCD_Putc((uint8_t)s[i++]);
 	}
 }
 /**
- * Send data to LCD
+ * @brief Send data to LCD.
+ * @param data Data to send.
  */
 static void LCD_SendData(uint8_t data) {
 
@@ -135,24 +206,11 @@ static void LCD_SendData(uint8_t data) {
 	LCD_Write(data);
 	GPIO_ResetBits(LCD_CTRL_PORT,LCD_E);
 
-	/*// update position
-	column+=1;
-	// my lcd has max 16 characters
-	if (column==16) {
-		row=~row; // we have two rows
-		column=0;
-		//change row when columns full
-		if (row==0)
-			LCD_Position(LCD_ROW1);
-		else
-			LCD_Position(LCD_ROW2);
-	}*/
-	// wait until the command gets processed
-	while (LCD_ReadFlag()  & LCD_BUSY_FLAG);
-
 }
+
 /**
- * Send a command to the LCD.
+ * @brief Send a command to the LCD.
+ * @param command Command to send.
  */
 static void LCD_SendCommand(uint8_t command) {
 	// rs low and rw low for writing command
@@ -167,16 +225,12 @@ static void LCD_SendCommand(uint8_t command) {
 	GPIO_SetBits(LCD_CTRL_PORT,LCD_E);
 	LCD_Write(command);
 	GPIO_ResetBits(LCD_CTRL_PORT,LCD_E);
-
-	// wait until the command gets processed
-	while (LCD_ReadFlag()  & LCD_BUSY_FLAG);
-
-
 }
 /**
- * Read the busy flag.
+ * @brief Read busy flag.
+ * @return
  */
-static uint8_t LCD_ReadFlag() {
+static uint8_t LCD_ReadFlag(void) {
 	LCD_DataIn();
 	GPIO_ResetBits(LCD_CTRL_PORT,LCD_RS);
 	GPIO_SetBits(LCD_CTRL_PORT,LCD_RW);
@@ -188,9 +242,9 @@ static uint8_t LCD_ReadFlag() {
 
 }
 /**
- * Set data lines as output.
+ * @brief Set data lines as output.
  */
-static void LCD_DataOut() {
+static void LCD_DataOut(void) {
 	GPIO_InitTypeDef GPIO_InitStructure;
 
 	GPIO_InitStructure.GPIO_Pin=(LCD_D4|LCD_D5|LCD_D6|LCD_D7);
@@ -201,9 +255,9 @@ static void LCD_DataOut() {
 	GPIO_Init(LCD_DATA_PORT,&GPIO_InitStructure);
 }
 /**
- * Set data lines as input with pull up
+ * @brief Set data lines as input with pull up
  */
-static void LCD_DataIn() {
+static void LCD_DataIn(void) {
 	GPIO_InitTypeDef GPIO_InitStructure;
 
 	GPIO_InitStructure.GPIO_Pin=(LCD_D4|LCD_D5|LCD_D6|LCD_D7);
@@ -213,7 +267,8 @@ static void LCD_DataIn() {
 	GPIO_Init(LCD_DATA_PORT,&GPIO_InitStructure);
 }
 /**
- * This functions sets data on the data lines when writing.
+ * @brief This functions sets data on the data lines when writing.
+ * @param data Data to write
  */
 static void LCD_Write(uint8_t data) {
 
@@ -236,12 +291,12 @@ static void LCD_Write(uint8_t data) {
 		GPIO_SetBits(LCD_DATA_PORT,LCD_D4);
 	else
 		GPIO_ResetBits(LCD_DATA_PORT,LCD_D4);
-
 }
 /**
- * Reads the data lines
+ * @brief Reads the data lines
+ * @return Read data.
  */
-static uint8_t LCD_Read() {
+static uint8_t LCD_Read(void) {
 	uint8_t result=0;
 
 	GPIO_SetBits(LCD_CTRL_PORT,LCD_E);

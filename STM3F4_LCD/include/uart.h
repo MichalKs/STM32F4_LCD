@@ -1,5 +1,5 @@
 /**
- * @file: 	fifo.h
+ * @file: 	uart.h
  * @brief:	   
  * @date: 	12 kwi 2014
  * @author: Michal Ksiezopolski
@@ -15,28 +15,13 @@
  * @endverbatim
  */
 
+#ifndef UART_H_
+#define UART_H_
 
-#ifndef FIFO_H_
-#define FIFO_H_
-
-#include <inttypes.h>
-#include <stdio.h>
 #include <stm32f4xx.h>
 
-/**
- *
- */
-typedef struct {
-	uint16_t head;
-	uint16_t tail;
-	char* buf;
-	uint16_t len;
-	uint16_t count;
-} FIFO_TypeDef;
+void UART2_Init(void);
+void USART2_Putc(uint8_t c);
+uint8_t USART2_Getc(void);
 
-void FIFO_Add(FIFO_TypeDef* fifo);
-ErrorStatus FIFO_Push(FIFO_TypeDef* fifo, char* c);
-ErrorStatus FIFO_Pop(FIFO_TypeDef* fifo, char* c);
-uint8_t FIFO_IsEmpty(FIFO_TypeDef* fifo);
-
-#endif /* FIFO_H_ */
+#endif /* UART_H_ */

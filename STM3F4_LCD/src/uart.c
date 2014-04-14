@@ -20,16 +20,16 @@
 
 #define UART2_BUF_LEN 512 ///< UART buffer lengths
 
-static char rxBuffer[UART2_BUF_LEN]; ///< Buffer for received data.
-static char txBuffer[UART2_BUF_LEN]; ///< Buffer for transmitted data.
+static uint8_t rxBuffer[UART2_BUF_LEN]; ///< Buffer for received data.
+static uint8_t txBuffer[UART2_BUF_LEN]; ///< Buffer for transmitted data.
 
 static FIFO_TypeDef rxFifo; ///< RX FIFO
 static FIFO_TypeDef txFifo; ///< TX FIFO
 
 /**
- * Initialize USART2
+ * @brief Initialize USART2
  */
-void UART2_Init() {
+void UART2_Init(void) {
 
 	GPIO_InitTypeDef GPIO_InitStructure;
 	USART_InitTypeDef USART_InitStructure;
@@ -58,7 +58,7 @@ void UART2_Init() {
 	GPIO_PinAFConfig(GPIOA, GPIO_PinSource2, GPIO_AF_USART2);
 	GPIO_PinAFConfig(GPIOA, GPIO_PinSource3, GPIO_AF_USART2);
 
-	// USART initalization
+	// USART initialization
 	USART_InitStructure.USART_BaudRate = 9600;
 	USART_InitStructure.USART_WordLength = USART_WordLength_8b;
 	USART_InitStructure.USART_StopBits = USART_StopBits_1;
@@ -90,23 +90,23 @@ void UART2_Init() {
 
 }
 /**
- * Send a char to USART2.
+ * @brief Send a char to USART2.
  * @param c Char to send.
  */
-void USART2_Putc(char c) {
+void USART2_Putc(uint8_t c) {
 
-	FIFO_Push(&txFifo,&c); // Put data in TX buffer
+	FIFO_Push(&txFifo,c); // Put data in TX buffer
 	USART_ITConfig(USART2, USART_IT_TXE, ENABLE); // Enable transmit buffer empty interrupt
 
 }
 /**
- * Get a char from USART2
+ * @brief Get a char from USART2
  * @return Received char.
  * @warning Waiting function!
  */
-char USART2_Getc() {
+uint8_t USART2_Getc(void) {
 
-	char c;
+	uint8_t c;
 
 	while (FIFO_IsEmpty(&rxFifo) == 1); // wait until buffer is empty
 
@@ -119,14 +119,14 @@ char USART2_Getc() {
 	return c;
 }
 /**
- * IRQ handler for USART2
+ * @brief IRQ handler for USART2
  */
 void USART2_IRQHandler(void) {
 
 	// If transmit buffer empty interrupt
     if(USART_GetITStatus(USART2, USART_IT_TXE) != RESET) {
 
-    	char c;
+    	uint8_t c;
 
     	if (FIFO_Pop(&txFifo,&c) == SUCCESS) { // If buffer not empty
 
@@ -142,9 +142,9 @@ void USART2_IRQHandler(void) {
     // If received buffer not empty interrupt
     if(USART_GetITStatus(USART2, USART_IT_RXNE) != RESET) {
 
-    	char c = USART_ReceiveData(USART2); // Get data from UART
+    	uint8_t c = USART_ReceiveData(USART2); // Get data from UART
 
-    	FIFO_Push(&rxFifo, &c); // Put data in RX buffer
+    	FIFO_Push(&rxFifo, c); // Put data in RX buffer
 
     }
 
