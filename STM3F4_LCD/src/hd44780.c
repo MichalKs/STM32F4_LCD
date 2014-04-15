@@ -87,7 +87,7 @@ void LCD_Update(void) {
 void LCD_Init(void) {
 
 	// Wait 50 ms for voltage to settle.
-	TimerDelay(50);
+	TIMER_Delay(50);
 
 	// Enable the GPIO clocks
 	RCC_AHB1PeriphClockCmd(LCD_DATA_CLK,ENABLE);
@@ -110,16 +110,16 @@ void LCD_Init(void) {
 
 	//initialization in 4-bit interface (as per datasheet)
 	LCD_Write(0b0011);
-	TimerDelay(5);
+	TIMER_Delay(5);
 
 	LCD_Write(0b0011);
-	TimerDelay(1);
+	TIMER_Delay(1);
 
 	LCD_Write(0b0011);
-	TimerDelay(1);
+	TIMER_Delay(1);
 
 	LCD_Write(0b0010);
-	TimerDelay(1);
+	TIMER_Delay(1);
 
 	// Initialize the LCD FIFO
 	lcdFifo.buf = lcdBuffer;
@@ -141,29 +141,118 @@ void LCD_Init(void) {
 	while (LCD_ReadFlag()  & LCD_BUSY_FLAG);
 }
 /**
+ * @brief Clear the display.
+ * @details Write space code 20H to all DDRAM addresses.
+ * Sets DDRAM address to 0. Removes all shifts.
+ * Sets I/D to 1 (increment mode) in entry mode.
+ */
+void LCD_Clear(void) {
+
+	FIFO_Push(&lcdFifo, LCD_COMMAND);
+	FIFO_Push(&lcdFifo, LCD_CLEAR_DISPLAY);
+}
+/**
  * @brief Go to the beginning of the display.
+ * @details Sets DDRAM address to 0. Removes all shifts.
  */
 void LCD_Home(void) {
 
 	FIFO_Push(&lcdFifo, LCD_COMMAND);
 	FIFO_Push(&lcdFifo, LCD_HOME);
 }
+
 /**
  * @brief Position the LCD at a given memory location.
- * @param position
+ * @param positionX Column of LCD
+ * @param positionY Row of LCD - should be 0 (upper row) or 1 (lower row)
  */
-void LCD_Position(uint8_t position) {
+void LCD_Position(uint8_t positionX, uint8_t positionY) {
 
+	uint8_t new_pos;
+
+	switch (positionY) {
+
+	case 0:
+		new_pos = LCD_ROW1;
+		break;
+	case 1:
+		new_pos = LCD_ROW2;
+		break;
+	default:
+		printf ("LCD Error: Wrong row!!!");
+		return;
+	}
+
+	new_pos += positionX;
 	FIFO_Push(&lcdFifo, LCD_COMMAND);
-	FIFO_Push(&lcdFifo, LCD_SET_DDRAM | (position & 0x7f));
+	FIFO_Push(&lcdFifo, LCD_SET_DDRAM | (new_pos & 0x7f));
 }
 /**
- * @brief Clear the display.
+ * @brief Shifts the display in the specified direction.
+ * @param shift Amount of chars to shift by.
+ * @param dir Direction of shift: 0 - left, 1 - right
  */
-void LCD_Clear(void) {
+void LCD_ShifDisplay(uint8_t shift, uint8_t dir) {
+
+	switch (dir) {
+
+	case 0:
+		break;
+
+	case 1:
+		dir = LCD_SHIFT_RIGHT;
+		break;
+
+	default:
+		printf ("LCD Error: Wrong direction!!!");
+		return;
+	}
+
+	uint8_t i;
+	for (i = 0; i < shift; i++) {
+		FIFO_Push(&lcdFifo, LCD_COMMAND);
+		FIFO_Push(&lcdFifo, LCD_CURSOR_SHIFT | LCD_SHIFT_DISPLAY | dir);
+	}
+
+}
+/**
+ *
+ * @param onOff
+ * @param blink
+ */
+void LCD_SetCursor(uint8_t onOff, uint8_t blink) {
+
+	switch (onOff) {
+
+	case 0:
+		break;
+
+	case 1:
+		onOff = LCD_CURSOR_ON;
+		break;
+
+	default:
+		printf ("LCD Error: Wrong parameter in LCD_SetCursor!!!");
+		return;
+	}
+
+	switch (blink) {
+
+	case 0:
+		break;
+
+	case 1:
+		blink = LCD_BLINK_ON;
+		break;
+
+	default:
+		printf ("LCD Error: Wrong parameter in LCD_SetCursor!!!");
+		return;
+	}
 
 	FIFO_Push(&lcdFifo, LCD_COMMAND);
-	FIFO_Push(&lcdFifo, LCD_CLEAR_DISPLAY);
+	FIFO_Push(&lcdFifo, LCD_DISPLAY_ON_OFF | LCD_DISPLAY_ON | blink | onOff);
+
 }
 /**
  * @brief Print a character.

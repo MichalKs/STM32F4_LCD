@@ -35,7 +35,7 @@
 int main(void) {
 
 	UART2_Init(); // Initialize USART2 (for printf)
-	TimerInit(SYSTICK_FREQ); // Initialize timer
+	TIMER_Init(SYSTICK_FREQ); // Initialize timer
 
 	LED_TypeDef led;
 	led.nr=LED0;
@@ -51,9 +51,10 @@ int main(void) {
 
 	// Test the LCD
 	LCD_Puts("Start...");
-	LCD_Position(LCD_ROW2+3);
+	LCD_Position(3,1);
 	LCD_Putc('1');
-	LCD_Position(LCD_ROW1+6);
+	LCD_ShifDisplay(4,0);
+	LCD_Position(6, 0);
 	LCD_Putc('a');
 	LCD_Clear();
 	LCD_Puts("Finished test!!!");
@@ -65,7 +66,7 @@ int main(void) {
 
 		printf("Test string sent from STM32F4!!!\r\n"); // Print test string
 
-		TimerDelay(2000); // Delay
+		TIMER_Delay(1000); // Delay
 
 	}
 

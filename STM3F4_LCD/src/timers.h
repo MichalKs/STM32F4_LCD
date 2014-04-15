@@ -31,8 +31,8 @@
  * @{
  */
 
-void TimerInit(uint32_t freq);
-void TimerDelay(uint32_t ms);
+void TIMER_Init(uint32_t freq);
+void TIMER_Delay(uint32_t ms);
 
 /**
  * @}

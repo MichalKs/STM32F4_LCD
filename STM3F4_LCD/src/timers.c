@@ -21,6 +21,7 @@
 
 #include <stm32f4xx.h>
 
+#include "timers.h"
 
 volatile uint32_t delayTimer; ///< Delay timer.
 
@@ -29,7 +30,7 @@ volatile uint32_t delayTimer; ///< Delay timer.
  * @param freq Required frequency of the timer
  *
  */
-void TimerInit(uint32_t freq) {
+void TIMER_Init(uint32_t freq) {
 
 	RCC_ClocksTypeDef RCC_Clocks;
 
@@ -42,7 +43,7 @@ void TimerInit(uint32_t freq) {
  * @param ms Milliseconds to delay.
  * @see delayTimer
  */
-void TimerDelay(uint32_t ms) {
+void TIMER_Delay(uint32_t ms) {
 
 	delayTimer = ms;
 
