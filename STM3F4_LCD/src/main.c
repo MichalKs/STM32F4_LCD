@@ -28,6 +28,8 @@
 
 #define SYSTICK_FREQ 1000 ///< Frequency of the SysTick.
 
+void softTimerCallback(void);
+
 /**
  * Main function
  * @return Nothing
@@ -59,18 +61,22 @@ int main(void) {
 	LCD_Clear();
 	LCD_Puts("Finished test!!!");
 
+	int8_t timerID = TIMER_AddSoftTimer(1000,softTimerCallback);
+	TIMER_StartSoftTimer(timerID);
+
 	while (1) {
 
 		LCD_Update();
-		LED_Toggle(LED0); // Toggle LED
-
-		printf("Test string sent from STM32F4!!!\r\n"); // Print test string
-
-		TIMER_Delay(1000); // Delay
+		TIMER_SoftTimersUpdate();
 
 	}
 
 	return 0;
+}
+
+void softTimerCallback(void) {
+	LED_Toggle(LED0); // Toggle LED
+	printf("Test string sent from STM32F4!!!\r\n"); // Print test string
 }
 
 
