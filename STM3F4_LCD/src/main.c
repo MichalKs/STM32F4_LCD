@@ -24,6 +24,7 @@
 #include "led.h"
 #include "uart.h"
 #include "hd44780.h"
+#include "pwm.h"
 
 
 #define SYSTICK_FREQ 1000 ///< Frequency of the SysTick.
@@ -63,6 +64,8 @@ int main(void) {
 
 	int8_t timerID = TIMER_AddSoftTimer(1000,softTimerCallback);
 	TIMER_StartSoftTimer(timerID);
+
+	PWM_Init();
 
 	while (1) {
 
