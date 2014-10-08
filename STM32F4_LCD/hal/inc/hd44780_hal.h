@@ -20,16 +20,17 @@
 
 #include <inttypes.h>
 
-void LCD_HAL_DataOut(void);
-void LCD_HAL_DataIn(void);
-void LCD_HAL_Init(void);
-void LCD_HAL_Write(uint8_t data);
-uint8_t LCD_HAL_Read(void);
-void LCD_HAL_LowRS(void);
-void LCD_HAL_HighRS(void);
-void LCD_HAL_LowRW(void);
-void LCD_HAL_HighRW(void);
-void LCD_HAL_HighE(void);
-void LCD_HAL_LowE(void);
+
+void    LCD_HAL_Write   (uint8_t data);
+uint8_t LCD_HAL_Read    (void);
+void    LCD_HAL_DataOut (void);
+void    LCD_HAL_DataIn  (void);
+void    LCD_HAL_Init    (void);
+void    LCD_HAL_LowRS   (void);
+void    LCD_HAL_HighRS  (void);
+void    LCD_HAL_LowRW   (void);
+void    LCD_HAL_HighRW  (void);
+void    LCD_HAL_HighE   (void);
+void    LCD_HAL_LowE    (void);
 
 #endif /* HD44780_HAL_H_ */
