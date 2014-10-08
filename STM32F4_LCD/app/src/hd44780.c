@@ -31,7 +31,7 @@ static uint8_t LCD_ReadFlag(void);
 
 
 #define LCD_BUF_LEN 256  	///< LCD buffer length
-#define LCD_DATA	0x80	///< LCD data ID
+#define LCD_DATA	  0x80	///< LCD data ID
 #define LCD_COMMAND	0x40	///< LCD command ID
 
 static uint8_t lcdBuffer[LCD_BUF_LEN]; 	///< Buffer for LCD commands and data
