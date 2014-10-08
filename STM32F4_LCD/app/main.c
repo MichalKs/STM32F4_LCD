@@ -49,7 +49,7 @@ int main(void) {
 	TIMER_Init(SYSTICK_FREQ); // Initialize timer
 
 	// Add a soft timer with callback running every 1000ms
-	int8_t timerID = TIMER_AddSoftTimer(1000, softTimerCallback);
+	int8_t timerID = TIMER_AddSoftTimer(5000, softTimerCallback);
 	TIMER_StartSoftTimer(timerID);
 
 	LED_Init(LED0); // Add an LED
@@ -64,14 +64,6 @@ int main(void) {
   LCD_Init(); // Initialize the LCD
 
   // Test the LCD
-  LCD_Puts("Start...");
-  LCD_Position(3,1);
-  LCD_Putc('1');
-  LCD_ShifDisplay(4,0);
-  LCD_Position(6, 0);
-  LCD_Putc('a');
-  LCD_Clear();
-  LCD_Puts("Finished test!!!");
 
   uint8_t buf[255];
   uint8_t len;
@@ -79,7 +71,7 @@ int main(void) {
   uint32_t softTimer = TIMER_GetTime(); // get start time for delay
 
 	while (1) {
-	  LCD_Update();
+
 	  if (TIMER_DelayTimer(1000, softTimer)) {
 	    LED_Toggle(LED3);
 	    softTimer = TIMER_GetTime(); // get start time for delay
@@ -100,6 +92,7 @@ int main(void) {
 
 		TIMER_SoftTimersUpdate(); // run timers
 		KEYS_Update(); // run keyboard
+		LCD_Update(); // run LCD
 	}
 }
 /**
@@ -107,27 +100,35 @@ int main(void) {
  */
 void softTimerCallback(void) {
 
-//  static uint8_t counter;
-//
-//  switch (counter % 3) {
-//
-//  case 0:
-//    LED_ChangeState(LED1, LED_OFF);
-//    LED_ChangeState(LED2, LED_OFF);
-//    break;
-//
-//  case 1:
-//    LED_ChangeState(LED1, LED_ON);
-//    LED_ChangeState(LED2, LED_OFF);
-//    break;
-//
-//  case 2:
-//    LED_ChangeState(LED1, LED_OFF);
-//    LED_ChangeState(LED2, LED_ON);
-//    break;
-//
-//  }
-//
-////  println("Test string sent from STM32F4!!!"); // Print test string
-//	counter++;
+  static uint8_t counter;
+
+  switch(counter % 8) {
+  case 0:
+    LCD_Clear();
+    LCD_Puts("Start...");
+    break;
+  case 1:
+    LCD_Position(3,1);
+    break;
+  case 2:
+    LCD_Putc('1');
+    break;
+  case 3:
+    LCD_ShifDisplay(4,0);
+    break;
+  case 4:
+    LCD_Position(6, 0);
+    break;
+  case 5:
+    LCD_Putc('a');
+    break;
+  case 6:
+    LCD_Clear();
+    break;
+  case 7:
+    LCD_Puts("Finished test!!!");
+    break;
+  }
+
+  counter++;
 }
