@@ -16,15 +16,12 @@
  * @endverbatim
  */
 
-#include "hd44780.h"
-#include "timers.h"
-#include "fifo.h"
+#include <hd44780.h>
+#include <timers.h>
+#include <fifo.h>
 #include <stdio.h>
+#include <hd44780_hal.h>
 
-static void LCD_Write(uint8_t data);
-static uint8_t LCD_Read(void);
-static void LCD_DataOut(void);
-static void LCD_DataIn(void);
 static void LCD_SendData(uint8_t data);
 static void LCD_SendCommand(uint8_t command);
 static uint8_t LCD_ReadFlag(void);
@@ -88,25 +85,8 @@ void LCD_Init(void) {
 
 	// Wait 50 ms for voltage to settle.
 	TIMER_Delay(50);
+	LCD_HAL_Init();
 
-	// Enable the GPIO clocks
-	RCC_AHB1PeriphClockCmd(LCD_DATA_CLK,ENABLE);
-	RCC_AHB1PeriphClockCmd(LCD_CTRL_CLK,ENABLE);
-
-	// Set LCD data pins as output
-	LCD_DataOut();
-
-	// Set control pins as output
-	GPIO_InitTypeDef GPIO_InitStructure;
-	GPIO_InitStructure.GPIO_Pin=(LCD_RS|LCD_RW|LCD_E);
-	GPIO_InitStructure.GPIO_Mode=GPIO_Mode_OUT;
-	GPIO_InitStructure.GPIO_OType=GPIO_OType_PP;
-	GPIO_InitStructure.GPIO_Speed=GPIO_Speed_50MHz;
-	GPIO_InitStructure.GPIO_PuPd=GPIO_PuPd_NOPULL;
-	GPIO_Init(LCD_CTRL_PORT,&GPIO_InitStructure);
-
-	// Clear all control signals initially
-	GPIO_ResetBits(LCD_CTRL_PORT,LCD_RW|LCD_RS|LCD_E);
 
 	//initialization in 4-bit interface (as per datasheet)
 	LCD_Write(0b0011);
@@ -281,19 +261,19 @@ void LCD_Puts(char* s) {
 static void LCD_SendData(uint8_t data) {
 
 	// rs high and rw low for writing data
-	GPIO_SetBits(LCD_CTRL_PORT,LCD_RS);
-	GPIO_ResetBits(LCD_CTRL_PORT,LCD_RW);
+  LCD_HAL_HighRS();
+	LCD_HAL_LowRW();
 
 	LCD_DataOut();
 
 	// write higher 4 bits first
-	GPIO_SetBits(LCD_CTRL_PORT,LCD_E);
+	LCD_HAL_HighE();
 	LCD_Write(data>>4);
-	GPIO_ResetBits(LCD_CTRL_PORT,LCD_E);
+	LCD_HAL_LowE();
 
-	GPIO_SetBits(LCD_CTRL_PORT,LCD_E);
+	LCD_HAL_HighE();
 	LCD_Write(data);
-	GPIO_ResetBits(LCD_CTRL_PORT,LCD_E);
+	LCD_HAL_LowE();
 
 }
 
@@ -303,17 +283,19 @@ static void LCD_SendData(uint8_t data) {
  */
 static void LCD_SendCommand(uint8_t command) {
 	// rs low and rw low for writing command
-	GPIO_ResetBits(LCD_CTRL_PORT,LCD_RW|LCD_RS);
+  LCD_HAL_LowRW();
+  LCD_HAL_LowRS();
+
 	LCD_DataOut();
 
 	// write higher 4 bits first
-	GPIO_SetBits(LCD_CTRL_PORT,LCD_E);
+	LCD_HAL_HighE();
 	LCD_Write(command>>4);
-	GPIO_ResetBits(LCD_CTRL_PORT,LCD_E);
+	LCD_HAL_LowE();
 
-	GPIO_SetBits(LCD_CTRL_PORT,LCD_E);
+	LCD_HAL_HighE();
 	LCD_Write(command);
-	GPIO_ResetBits(LCD_CTRL_PORT,LCD_E);
+	LCD_HAL_LowE();
 }
 /**
  * @brief Read busy flag.
@@ -321,8 +303,8 @@ static void LCD_SendCommand(uint8_t command) {
  */
 static uint8_t LCD_ReadFlag(void) {
 	LCD_DataIn();
-	GPIO_ResetBits(LCD_CTRL_PORT,LCD_RS);
-	GPIO_SetBits(LCD_CTRL_PORT,LCD_RW);
+	LCD_HAL_LowRS();
+	LCD_HAL_HighRW();
 
 	uint8_t result=0;
 	result=(LCD_Read()<<4);
@@ -330,76 +312,5 @@ static uint8_t LCD_ReadFlag(void) {
 	return result;
 
 }
-/**
- * @brief Set data lines as output.
- */
-static void LCD_DataOut(void) {
-	GPIO_InitTypeDef GPIO_InitStructure;
 
-	GPIO_InitStructure.GPIO_Pin=(LCD_D4|LCD_D5|LCD_D6|LCD_D7);
-	GPIO_InitStructure.GPIO_Mode=GPIO_Mode_OUT;
-	GPIO_InitStructure.GPIO_OType=GPIO_OType_PP;
-	GPIO_InitStructure.GPIO_Speed=GPIO_Speed_50MHz;
-	GPIO_InitStructure.GPIO_PuPd=GPIO_PuPd_NOPULL;
-	GPIO_Init(LCD_DATA_PORT,&GPIO_InitStructure);
-}
-/**
- * @brief Set data lines as input with pull up
- */
-static void LCD_DataIn(void) {
-	GPIO_InitTypeDef GPIO_InitStructure;
-
-	GPIO_InitStructure.GPIO_Pin=(LCD_D4|LCD_D5|LCD_D6|LCD_D7);
-	GPIO_InitStructure.GPIO_Mode=GPIO_Mode_IN;
-	GPIO_InitStructure.GPIO_Speed=GPIO_Speed_50MHz;
-	GPIO_InitStructure.GPIO_PuPd=GPIO_PuPd_UP;
-	GPIO_Init(LCD_DATA_PORT,&GPIO_InitStructure);
-}
-/**
- * @brief This functions sets data on the data lines when writing.
- * @param data Data to write
- */
-static void LCD_Write(uint8_t data) {
-
-	if (data & (1<<3))
-		GPIO_SetBits(LCD_DATA_PORT,LCD_D7);
-	else
-		GPIO_ResetBits(LCD_DATA_PORT,LCD_D7);
-
-	if (data & (1<<2))
-		GPIO_SetBits(LCD_DATA_PORT,LCD_D6);
-	else
-		GPIO_ResetBits(LCD_DATA_PORT,LCD_D6);
-
-	if (data & (1<<1))
-		GPIO_SetBits(LCD_DATA_PORT,LCD_D5);
-	else
-		GPIO_ResetBits(LCD_DATA_PORT,LCD_D5);
-
-	if (data & (1<<0))
-		GPIO_SetBits(LCD_DATA_PORT,LCD_D4);
-	else
-		GPIO_ResetBits(LCD_DATA_PORT,LCD_D4);
-}
-/**
- * @brief Reads the data lines
- * @return Read data.
- */
-static uint8_t LCD_Read(void) {
-	uint8_t result=0;
-
-	GPIO_SetBits(LCD_CTRL_PORT,LCD_E);
-
-	if(GPIO_ReadInputDataBit(LCD_DATA_PORT,LCD_D7))
-		result |= (1<<3);
-	if(GPIO_ReadInputDataBit(LCD_DATA_PORT,LCD_D6))
-		result |= (1<<2);
-	if(GPIO_ReadInputDataBit(LCD_DATA_PORT,LCD_D5))
-		result |= (1<<1);
-	if(GPIO_ReadInputDataBit(LCD_DATA_PORT,LCD_D4))
-		result |= (1<<0);
-
-	GPIO_ResetBits(LCD_CTRL_PORT,LCD_E);
-	return result;
-}
 
