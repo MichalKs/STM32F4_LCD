@@ -46,7 +46,7 @@ void LCD_HAL_Init(void) {
   RCC_AHB1PeriphClockCmd(LCD_CTRL_CLK,ENABLE);
 
   // Set LCD data pins as output
-  LCD_DataOut();
+  LCD_HAL_DataOut();
 
   // Set control pins as output
   GPIO_InitTypeDef GPIO_InitStructure;
@@ -83,7 +83,7 @@ void LCD_HAL_LowE(void) {
 /**
  * @brief Set data lines as output.
  */
-void LCD_DataOut(void) {
+void LCD_HAL_DataOut(void) {
   GPIO_InitTypeDef GPIO_InitStructure;
 
   GPIO_InitStructure.GPIO_Pin=(LCD_D4|LCD_D5|LCD_D6|LCD_D7);
@@ -96,7 +96,7 @@ void LCD_DataOut(void) {
 /**
  * @brief Set data lines as input with pull up
  */
-void LCD_DataIn(void) {
+void LCD_HAL_DataIn(void) {
   GPIO_InitTypeDef GPIO_InitStructure;
 
   GPIO_InitStructure.GPIO_Pin=(LCD_D4|LCD_D5|LCD_D6|LCD_D7);
@@ -109,7 +109,7 @@ void LCD_DataIn(void) {
  * @brief This functions sets data on the data lines when writing.
  * @param data Data to write
  */
-void LCD_Write(uint8_t data) {
+void LCD_HAL_Write(uint8_t data) {
 
   if (data & (1<<3))
     GPIO_SetBits(LCD_DATA_PORT,LCD_D7);
@@ -135,7 +135,7 @@ void LCD_Write(uint8_t data) {
  * @brief Reads the data lines
  * @return Read data.
  */
-uint8_t LCD_Read(void) {
+uint8_t LCD_HAL_Read(void) {
   uint8_t result=0;
 
   GPIO_SetBits(LCD_CTRL_PORT,LCD_E);

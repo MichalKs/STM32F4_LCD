@@ -89,16 +89,16 @@ void LCD_Init(void) {
 
 
 	//initialization in 4-bit interface (as per datasheet)
-	LCD_Write(0b0011);
+	LCD_HAL_Write(0b0011);
 	TIMER_Delay(5);
 
-	LCD_Write(0b0011);
+	LCD_HAL_Write(0b0011);
 	TIMER_Delay(1);
 
-	LCD_Write(0b0011);
+	LCD_HAL_Write(0b0011);
 	TIMER_Delay(1);
 
-	LCD_Write(0b0010);
+	LCD_HAL_Write(0b0010);
 	TIMER_Delay(1);
 
 	// Initialize the LCD FIFO
@@ -264,15 +264,15 @@ static void LCD_SendData(uint8_t data) {
   LCD_HAL_HighRS();
 	LCD_HAL_LowRW();
 
-	LCD_DataOut();
+	LCD_HAL_DataOut();
 
 	// write higher 4 bits first
 	LCD_HAL_HighE();
-	LCD_Write(data>>4);
+	LCD_HAL_Write(data>>4);
 	LCD_HAL_LowE();
 
 	LCD_HAL_HighE();
-	LCD_Write(data);
+	LCD_HAL_Write(data);
 	LCD_HAL_LowE();
 
 }
@@ -286,15 +286,15 @@ static void LCD_SendCommand(uint8_t command) {
   LCD_HAL_LowRW();
   LCD_HAL_LowRS();
 
-	LCD_DataOut();
+	LCD_HAL_DataOut();
 
 	// write higher 4 bits first
 	LCD_HAL_HighE();
-	LCD_Write(command>>4);
+	LCD_HAL_Write(command>>4);
 	LCD_HAL_LowE();
 
 	LCD_HAL_HighE();
-	LCD_Write(command);
+	LCD_HAL_Write(command);
 	LCD_HAL_LowE();
 }
 /**
@@ -302,13 +302,13 @@ static void LCD_SendCommand(uint8_t command) {
  * @return
  */
 static uint8_t LCD_ReadFlag(void) {
-	LCD_DataIn();
+	LCD_HAL_DataIn();
 	LCD_HAL_LowRS();
 	LCD_HAL_HighRW();
 
 	uint8_t result=0;
-	result=(LCD_Read()<<4);
-	result|=LCD_Read();
+	result=(LCD_HAL_Read()<<4);
+	result|=LCD_HAL_Read();
 	return result;
 
 }
