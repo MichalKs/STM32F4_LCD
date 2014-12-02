@@ -89,10 +89,14 @@ void COMM_Init(uint32_t baud) {
  * @param c Char to send.
  */
 void COMM_Putc(uint8_t c) {
+  // disable IRQ so it doesn't screw up FIFO count - leads to errors in transmission
+  COMM_HAL_IrqDisable;
 
   FIFO_Push(&txFifo,c); // Put data in TX buffer
   COMM_HAL_TxEnable();  // Enable low level transmitter
 
+  // enable IRQ again
+  COMM_HAL_IrqEnable;
 }
 /**
  * @brief Get a char from USART2

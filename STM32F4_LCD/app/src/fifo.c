@@ -95,7 +95,7 @@ uint8_t FIFO_Pop(FIFO_TypeDef* fifo, uint8_t* c) {
 
   // If FIFO is empty
   if (fifo->count == 0) {
-    println("FIFO is empty");
+//    println("FIFO is empty");
     return 1;
   }
   *c = fifo->buf[fifo->tail++];

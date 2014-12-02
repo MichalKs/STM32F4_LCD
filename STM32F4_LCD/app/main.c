@@ -33,7 +33,7 @@ void softTimerCallback(void);
 #define DEBUG
 
 #ifdef DEBUG
-#define print(str, args...) printf("MAIN--> "str"%s",##args,"\r")
+#define print(str, args...) printf(""str"%s",##args,"")
 #define println(str, args...) printf("MAIN--> "str"%s",##args,"\r\n")
 #else
 #define print(str, args...) (void)0
@@ -43,14 +43,14 @@ void softTimerCallback(void);
 
 int main(void) {
 	
-  COMM_Init(COMM_BAUD_RATE);
+  COMM_Init(COMM_BAUD_RATE); // initialize communication with PC
   println("Starting program"); // Print a string to terminal
 
 	TIMER_Init(SYSTICK_FREQ); // Initialize timer
 
 	// Add a soft timer with callback running every 1000ms
-	int8_t timerID = TIMER_AddSoftTimer(5000, softTimerCallback);
-	TIMER_StartSoftTimer(timerID);
+	int8_t timerID = TIMER_AddSoftTimer(1000, softTimerCallback);
+	TIMER_StartSoftTimer(timerID); // start the timer
 
 	LED_Init(LED0); // Add an LED
 	LED_Init(LED1); // Add an LED
@@ -59,7 +59,7 @@ int main(void) {
 	LED_Init(LED5); // Add nonexising LED for test
 	LED_ChangeState(LED5, LED_ON);
 
-	KEYS_Init(); // initialize matrix keyboard
+	KEYS_Init(); // Initialize matrix keyboard
 
   LCD_Init(); // Initialize the LCD
 
@@ -72,6 +72,7 @@ int main(void) {
 
 	while (1) {
 
+	  // test delay method
 	  if (TIMER_DelayTimer(1000, softTimer)) {
 	    LED_Toggle(LED3);
 	    softTimer = TIMER_GetTime(); // get start time for delay
@@ -95,6 +96,7 @@ int main(void) {
 		LCD_Update(); // run LCD
 	}
 }
+
 /**
  * @brief Callback function called on every soft timer overflow
  */

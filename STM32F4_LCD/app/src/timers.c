@@ -22,7 +22,7 @@
 #include <timers.h>
 #include <stdio.h>
 #include <systick.h>
-
+#include <timer14.h>
 
 #ifndef DEBUG
   #define DEBUG
@@ -64,7 +64,10 @@ static TIMER_Soft_TypeDef softTimers[MAX_SOFT_TIMERS]; ///< Array of soft timers
  */
 void TIMER_Init(uint32_t freq) {
 
-  SYSTICK_Init(freq);
+  SYSTICK_Init(freq); // initialize sysTick for ms count
+
+  // initialize TIMER14 as microsecond counter
+  TIMER14_Init();
 
 }
 /**
@@ -96,6 +99,29 @@ void TIMER_Delay(uint32_t ms) {
     }
   }
 }
+
+/**
+ * @brief Delay function in us.
+ * @param us Microseconds to delay.
+ * @warning This is a blocking function. Use with care!
+ */
+void TIMER_DelayUS(uint32_t us) {
+
+  uint32_t startTime = TIMER14_GetTime();
+  uint32_t currentTime;
+
+  while (1) { // Delay
+    currentTime = TIMER14_GetTime();
+    if ((currentTime >= startTime) && (currentTime-startTime > us)) {
+      break;
+    }
+    // account for system timer overflow
+    if ((currentTime < startTime) && (UINT32_MAX-startTime + currentTime > us)) {
+      break;
+    }
+  }
+}
+
 /**
  * @brief Nonblocking delay function using
  * @param ms Delay time
